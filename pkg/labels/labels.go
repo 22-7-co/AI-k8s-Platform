@@ -22,4 +22,10 @@ const (
 
 	// TrainingWorkloadValue is the expected value for LabelTrainingWorkload.
 	TrainingWorkloadValue = "true"
+
+	// AnnotationHealingCompletedAt records when healing completed (RFC3339).
+	AnnotationHealingCompletedAt = "ai-k8s-platform.io/healing-completed-at"
+
+	// DefaultTrainingSelector is the label selector for training pods.
+	DefaultTrainingSelector = LabelTrainingWorkload + "=" + TrainingWorkloadValue
 )

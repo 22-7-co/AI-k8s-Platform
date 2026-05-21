@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: operator-config
+  namespace: ai-platform
+  labels:
+    app.kubernetes.io/name: ai-operator
+data:
+  POLL_INTERVAL: "30s"
+  HEALING_COOLDOWN: "10m"
+  HEALING_DRY_RUN: "false"
+  TARGET_NAMESPACES: "ai-training"
+  TRAINING_POD_LABEL_SELECTOR: "ai-k8s-platform.io/training=true"
+  PROMETHEUS_MOCK: "true"
+  PROMETHEUS_QUERY: "increase(gpu_xid_errors_total[5m]) > 0"
+  TRAINING_JOB_NAME: "training-job"
+  TRAINING_JOB_NAMESPACE: "ai-training"
