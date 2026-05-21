@@ -24,7 +24,7 @@ flowchart LR
 | 控制面 | Custom Operator（`client-go` / kubebuilder） |
 | 自愈 | Cordon → Taint → 驱逐 → Job 重建 + 断点续训 |
 
-详细说明见 [说明文档.txt](./说明文档.txt)、[docs/architecture.md](./docs/architecture.md)。
+详细说明见 [项目计划.md](./项目计划.md)（完整实施计划）、[说明文档.txt](./说明文档.txt)、[docs/architecture.md](./docs/architecture.md)。
 
 ## 目录结构
 

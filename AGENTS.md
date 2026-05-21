@@ -4,7 +4,7 @@
 
 Self-healing AI compute platform on Kubernetes: detect GPU hardware faults (DCGM / Prometheus), cordon/taint nodes, evict unhealthy training pods, and rely on Job + checkpoint storage for minute-level recovery.
 
-See [说明文档.txt](./说明文档.txt) and [docs/architecture.md](./docs/architecture.md) for product context.
+See [项目计划.md](./项目计划.md) (full plan), [说明文档.txt](./说明文档.txt), and [docs/architecture.md](./docs/architecture.md) for product context.
 
 ## Repository layout
 
