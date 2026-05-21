@@ -1,0 +1,18 @@
+# Example only — not deployed in P1. See project plan §6.6.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: gpu-hardware-xid
+  namespace: ai-platform
+spec:
+  groups:
+    - name: gpu-fault
+      rules:
+        - alert: GPUHardwareXID
+          expr: increase(gpu_xid_errors_total[5m]) > 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "GPU XID on {{ $labels.node }}"
+            description: "GPU {{ $labels.gpu_id }} reported XID {{ $labels.xid_code }} on node {{ $labels.node }}"
