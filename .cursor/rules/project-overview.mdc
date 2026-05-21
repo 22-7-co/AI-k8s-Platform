@@ -1,0 +1,24 @@
+---
+description: AI-k8s-Platform goals, layout, and healing pipeline
+alwaysApply: true
+---
+
+# AI-k8s-Platform
+
+Self-healing K8s platform for AI training: DCGM metrics → Prometheus → Operator → cordon/taint → evict → Job reschedule + checkpoint resume.
+
+## Layout
+
+- `cmd/operator`, `cmd/exporter` — binaries
+- `internal/healing` — cordon, taint, eviction
+- `internal/prometheus` — metric / alert queries
+- `deploy/manifests` — RBAC and workloads
+
+## Healing sequence
+
+1. Alert (e.g. GPU XID on a node)
+2. Cordon + taint the node
+3. Evict training pods on that node
+4. Job controller reschedules; new pod mounts latest checkpoint
+
+Prefer minimal diffs; match existing Go and K8s patterns. See `AGENTS.md` and `说明文档.txt`.

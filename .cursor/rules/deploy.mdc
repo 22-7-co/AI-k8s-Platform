@@ -1,0 +1,12 @@
+---
+description: Kubernetes manifests and Helm conventions
+globs: "deploy/**"
+alwaysApply: false
+---
+
+# Deploy
+
+- DaemonSet for node-level DCGM/exporter; Deployment for operator control plane.
+- Keep ServiceAccount, ClusterRole, and Binding in one place per component under `deploy/manifests/`.
+- Document required labels/taints the operator sets so schedulers stay consistent.
+- Use namespaced resources by default; cluster-scoped RBAC only when necessary.

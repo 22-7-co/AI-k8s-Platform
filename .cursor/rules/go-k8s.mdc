@@ -1,0 +1,20 @@
+---
+description: Go and Kubernetes coding conventions
+globs: "**/*.go"
+alwaysApply: false
+---
+
+# Go + K8s
+
+- Use `context.Context` on API calls; wrap errors with `%w`.
+- RBAC: only request verbs the operator actually uses.
+- Prefer `client-go` / controller-runtime patterns already in the repo over new frameworks.
+- Unit-test pure logic in `internal/`; integration tests behind build tags if added later.
+- No secrets in code; read from env (see `.env.example`).
+
+```go
+// Prefer typed client + explicit resource version checks in reconcilers
+if err := r.cordonNode(ctx, nodeName); err != nil {
+    return fmt.Errorf("cordon %s: %w", nodeName, err)
+}
+```

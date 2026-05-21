@@ -1,0 +1,48 @@
+# Binaries
+/bin/
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go
+*.test
+*.out
+coverage.out
+coverage.html
+vendor/
+
+# Kubebuilder / controller-gen
+config/crd/bases/
+config/rbac/role.yaml
+config/manager/kustomization.yaml
+**/zz_generated.*
+
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+*.pem
+credentials.json
+
+# Build & deploy artifacts
+*.tar.gz
+deploy/**/charts/*.tgz
+
+# Cursor (local overrides only; keep rules & AGENTS.md tracked)
+.cursor/*.local
+.cursor/cache/
+
+# Logs & temp
+*.log
+tmp/
