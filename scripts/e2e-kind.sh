@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# P2 e2e: kind 2-node cluster, mock PromQL fault, operator heals training Job.
+# P3 L1-B e2e: kind 2-worker cluster, in-cluster operator Deployment, strict node reschedule.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -8,6 +8,7 @@ cd "$ROOT"
 CLUSTER="${KIND_CLUSTER_NAME:-ai-k8s-e2e}"
 OPERATOR_IMAGE="${OPERATOR_IMAGE:-ai-k8s-platform/operator:dev}"
 KEEP_CLUSTER="${KEEP_CLUSTER:-false}"
+RUN_PROMQL_E2E="${RUN_PROMQL_E2E:-false}"
 
 log() { echo "==> $*"; }
 
@@ -40,6 +41,20 @@ kubectl apply -f "${ROOT}/deploy/manifests/operator/clusterrole.yaml"
 kubectl apply -f "${ROOT}/deploy/manifests/operator/clusterrolebinding.yaml"
 kubectl apply -f "${ROOT}/deploy/manifests/operator/configmap.yaml"
 kubectl apply -f "${ROOT}/deploy/manifests/operator/deployment.yaml"
+
+log "reset worker nodes (repeatable e2e)"
+while read -r n; do
+  [[ -n "$n" ]] || continue
+  kubectl uncordon "$n" 2>/dev/null || true
+  kubectl taint nodes "$n" ai-k8s-platform.io/gpu-fault:NoSchedule- 2>/dev/null || true
+  kubectl label node "$n" ai-k8s-platform.io/healing-state- 2>/dev/null || true
+  kubectl annotate node "$n" ai-k8s-platform.io/healing-completed-at- 2>/dev/null || true
+done < <(kubectl get nodes -o jsonpath='{range .items[?(@.metadata.labels.node-role\.kubernetes\.io/control-plane=="")]}{.metadata.name}{"\n"}{end}')
+
+log "cleaning previous training job"
+kubectl delete job training-job -n ai-training --ignore-not-found --wait=true 2>/dev/null || \
+  kubectl delete job training-job -n ai-training --ignore-not-found
+sleep 2
 kubectl apply -f "${ROOT}/deploy/manifests/training/job.yaml"
 
 log "waiting for training pod"
@@ -52,11 +67,17 @@ OLD_POD="$(kubectl get pods -n ai-training -l batch.kubernetes.io/job-name=train
   -o jsonpath='{.items[0].metadata.name}')"
 log "training pod ${OLD_POD} on node ${FAULT_NODE}"
 
-log "configuring operator mock fault on ${FAULT_NODE}"
+log "configuring in-cluster operator mock fault on ${FAULT_NODE}"
 kubectl patch configmap operator-config -n ai-platform --type merge \
-  -p "{\"data\":{\"PROMETHEUS_MOCK_NODES\":\"${FAULT_NODE}\",\"HEALING_DRY_RUN\":\"false\"}}"
+  -p "{\"data\":{\"PROMETHEUS_MOCK\":\"true\",\"PROMETHEUS_MOCK_NODES\":\"${FAULT_NODE}\",\"HEALING_DRY_RUN\":\"false\",\"POLL_INTERVAL\":\"8s\",\"RESCHEDULE_TIMEOUT\":\"120s\"}}"
+kubectl set image deployment/ai-operator -n ai-platform operator="$OPERATOR_IMAGE" --record=false 2>/dev/null || true
 kubectl rollout restart deployment/ai-operator -n ai-platform
 kubectl rollout status deployment/ai-operator -n ai-platform --timeout=120s
+kubectl wait --for=condition=Ready --timeout=120s -n ai-platform pod -l app.kubernetes.io/name=ai-operator
+
+if ! kubectl logs -n ai-platform deployment/ai-operator --tail=30 2>/dev/null | grep -q action_id; then
+  echo "WARN: operator logs missing action_id in last 30 lines (checking after heal)"
+fi
 
 log "waiting for node cordon"
 for _ in $(seq 1 90); do
@@ -106,6 +127,12 @@ if [[ -z "$NEW_NODE" || "$NEW_NODE" == "$FAULT_NODE" ]]; then
   exit 1
 fi
 
+if ! kubectl logs -n ai-platform deployment/ai-operator --tail=50 | grep -q action_id; then
+  echo "FAIL: operator logs missing action_id" >&2
+  kubectl logs -n ai-platform deployment/ai-operator --tail=50 || true
+  exit 1
+fi
+
 EVENTS="$(kubectl get events -A --field-selector involvedObject.name="${FAULT_NODE}" 2>/dev/null | grep -i Healing || true)"
 if [[ -z "$EVENTS" ]]; then
   EVENTS="$(kubectl get events -A | grep -i Healing | tail -5 || true)"
@@ -116,7 +143,13 @@ else
   log "healing events present"
 fi
 
-log "P2 e2e PASSED (fault=${FAULT_NODE}, new=${NEW_NODE})"
+log "P3 e2e-kind PASSED (fault=${FAULT_NODE}, new=${NEW_NODE})"
+
+if [[ "$RUN_PROMQL_E2E" == "true" ]]; then
+  log "running real PromQL sub-gate (KEEP_CLUSTER implied)"
+  export KEEP_CLUSTER=true
+  "${ROOT}/scripts/e2e-promql.sh"
+fi
 
 if [[ "$KEEP_CLUSTER" != "true" ]]; then
   log "deleting kind cluster ${CLUSTER}"

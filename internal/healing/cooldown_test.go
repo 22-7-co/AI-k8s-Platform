@@ -47,6 +47,22 @@ func TestInCooldown_completed_after_cooldown(t *testing.T) {
 	}
 }
 
+func TestIncrementFailCount_Retry(t *testing.T) {
+	t.Parallel()
+	node := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "node-1"}}
+	client := fake.NewSimpleClientset(node)
+	if err := IncrementFailCount(context.Background(), client, "node-1"); err != nil {
+		t.Fatalf("first: %v", err)
+	}
+	if err := IncrementFailCount(context.Background(), client, "node-1"); err != nil {
+		t.Fatalf("second: %v", err)
+	}
+	got, _ := client.CoreV1().Nodes().Get(context.Background(), "node-1", metav1.GetOptions{})
+	if got.Annotations[labels.AnnotationHealingFailCount] != "2" {
+		t.Fatalf("count=%q", got.Annotations[labels.AnnotationHealingFailCount])
+	}
+}
+
 func TestMarkCompleted(t *testing.T) {
 	t.Parallel()
 	node := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "node-1"}}

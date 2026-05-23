@@ -26,6 +26,9 @@ const (
 	// AnnotationHealingCompletedAt records when healing completed (RFC3339).
 	AnnotationHealingCompletedAt = "ai-k8s-platform.io/healing-completed-at"
 
+	// AnnotationHealingFailCount counts consecutive handle-node failures.
+	AnnotationHealingFailCount = "ai-k8s-platform.io/healing-fail-count"
+
 	// DefaultTrainingSelector is the label selector for training pods.
 	DefaultTrainingSelector = LabelTrainingWorkload + "=" + TrainingWorkloadValue
 )

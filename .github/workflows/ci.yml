@@ -16,3 +16,20 @@ jobs:
           go-version: "1.22"
       - run: go test ./...
       - run: make build
+
+  e2e-kind:
+    needs: test
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Install kind
+        run: |
+          curl -fsSL -o kind "https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64"
+          chmod +x kind
+          sudo mv kind /usr/local/bin/kind
+      - name: e2e-kind (L1-B)
+        run: chmod +x scripts/*.sh && ./scripts/e2e-kind.sh

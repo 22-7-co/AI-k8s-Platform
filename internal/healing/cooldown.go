@@ -2,12 +2,11 @@ package healing
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/ai-k8s-platform/core/pkg/labels"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -32,20 +31,38 @@ func InCooldown(node *corev1.Node, cooldown time.Duration) bool {
 
 // MarkCompleted sets healing-state=completed and records completion time.
 func MarkCompleted(ctx context.Context, client kubernetes.Interface, nodeName string) error {
-	node, err := client.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
-	if err != nil {
-		return fmt.Errorf("get node %q: %w", nodeName, err)
-	}
-	if node.Labels == nil {
-		node.Labels = make(map[string]string)
-	}
-	if node.Annotations == nil {
-		node.Annotations = make(map[string]string)
-	}
-	node.Labels[labels.LabelHealingState] = labels.StateCompleted
-	node.Annotations[labels.AnnotationHealingCompletedAt] = time.Now().UTC().Format(time.RFC3339)
-	if _, err := client.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{}); err != nil {
-		return fmt.Errorf("mark completed %q: %w", nodeName, err)
-	}
-	return nil
+	now := time.Now().UTC().Format(time.RFC3339)
+	return updateNodeWithRetry(ctx, client, nodeName, func(node *corev1.Node) bool {
+		changed := false
+		if node.Labels == nil {
+			node.Labels = make(map[string]string)
+		}
+		if node.Labels[labels.LabelHealingState] != labels.StateCompleted {
+			node.Labels[labels.LabelHealingState] = labels.StateCompleted
+			changed = true
+		}
+		if node.Annotations == nil {
+			node.Annotations = make(map[string]string)
+		}
+		if node.Annotations[labels.AnnotationHealingCompletedAt] != now {
+			node.Annotations[labels.AnnotationHealingCompletedAt] = now
+			changed = true
+		}
+		return changed
+	})
+}
+
+// IncrementFailCount bumps healing-fail-count on the node annotation.
+func IncrementFailCount(ctx context.Context, client kubernetes.Interface, nodeName string) error {
+	return updateNodeWithRetry(ctx, client, nodeName, func(node *corev1.Node) bool {
+		if node.Annotations == nil {
+			node.Annotations = make(map[string]string)
+		}
+		prev := 0
+		if v := node.Annotations[labels.AnnotationHealingFailCount]; v != "" {
+			prev, _ = strconv.Atoi(v)
+		}
+		node.Annotations[labels.AnnotationHealingFailCount] = strconv.Itoa(prev + 1)
+		return true
+	})
 }

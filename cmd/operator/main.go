@@ -9,6 +9,7 @@ import (
 
 	"github.com/ai-k8s-platform/core/internal/operator"
 	"github.com/ai-k8s-platform/core/internal/operator/config"
+	"github.com/ai-k8s-platform/core/internal/operator/metrics"
 	"github.com/ai-k8s-platform/core/internal/prometheus"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -19,6 +20,14 @@ func main() {
 	cfg := config.Load()
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	metricsSrv := metrics.StartServer(cfg.MetricsListen)
+	go func() {
+		if err := metricsSrv.ListenAndServe(); err != nil && err.Error() != "http: Server closed" {
+			log.Printf("metrics server: %v", err)
+		}
+	}()
+	defer metricsSrv.Shutdown(context.Background())
 
 	k8s, err := newK8sClient()
 	if err != nil {
@@ -37,7 +46,7 @@ func main() {
 	}
 
 	loop := &operator.Loop{K8s: k8s, Prom: prom, Config: cfg}
-	log.Printf("operator started dry_run=%v poll=%s", cfg.HealingDryRun, cfg.PollInterval)
+	log.Printf(`{"msg":"operator started","dry_run":%v,"poll":"%s","metrics":"%s"}`, cfg.HealingDryRun, cfg.PollInterval, cfg.MetricsListen)
 	if err := loop.Run(ctx); err != nil && err != context.Canceled {
 		log.Fatalf("operator loop: %v", err)
 	}

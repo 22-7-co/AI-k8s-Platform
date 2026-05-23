@@ -1,8 +1,11 @@
 package logging
 
 import (
-	"log"
+	"log/slog"
+	"os"
 )
+
+var logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 // Fields carries structured healing log context (§6.3).
 type Fields struct {
@@ -16,8 +19,18 @@ type Fields struct {
 	PromQL   string
 }
 
-// Info logs a healing step.
+// Info logs a healing step as one JSON line.
 func Info(msg string, f Fields) {
-	log.Printf("level=info msg=%q action_id=%s node=%s action=%s dry_run=%v result=%s error=%s xid=%s promql=%s",
-		msg, f.ActionID, f.Node, f.Action, f.DryRun, f.Result, f.Error, f.XID, f.PromQL)
+	attrs := []any{
+		"msg", msg,
+		"action_id", f.ActionID,
+		"node", f.Node,
+		"action", f.Action,
+		"dry_run", f.DryRun,
+		"result", f.Result,
+		"error", f.Error,
+		"xid", f.XID,
+		"promql", f.PromQL,
+	}
+	logger.Info(msg, attrs...)
 }
