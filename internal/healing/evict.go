@@ -88,18 +88,19 @@ func evictOnePod(ctx context.Context, client kubernetes.Interface, pod *corev1.P
 		DeleteOptions: &metav1.DeleteOptions{},
 	}
 	err := client.PolicyV1().Evictions(pod.Namespace).Evict(ctx, eviction)
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil
-		}
-		if !apierrors.IsTooManyRequests(err) && !apierrors.IsForbidden(err) && !apierrors.IsTimeout(err) {
-			return fmt.Errorf("evict %s/%s: %w", pod.Namespace, pod.Name, err)
-		}
+	if err == nil {
+		return waitPodGone(ctx, client, pod.Namespace, pod.Name)
 	}
-	if err := deletePodIfPresent(ctx, client, pod.Namespace, pod.Name); err != nil {
-		return err
+	if apierrors.IsNotFound(err) {
+		return nil
 	}
-	return waitPodGone(ctx, client, pod.Namespace, pod.Name)
+	if apierrors.IsTooManyRequests(err) || apierrors.IsForbidden(err) || apierrors.IsTimeout(err) {
+		if delErr := deletePodIfPresent(ctx, client, pod.Namespace, pod.Name); delErr != nil {
+			return delErr
+		}
+		return waitPodGone(ctx, client, pod.Namespace, pod.Name)
+	}
+	return fmt.Errorf("evict %s/%s: %w", pod.Namespace, pod.Name, err)
 }
 
 func deletePodIfPresent(ctx context.Context, client kubernetes.Interface, ns, name string) error {

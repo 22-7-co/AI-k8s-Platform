@@ -19,6 +19,12 @@ kubectl apply -f "${ROOT}/deploy/manifests/training/namespace.yaml"
 kubectl apply -f "${ROOT}/deploy/manifests/operator/serviceaccount.yaml"
 kubectl apply -f "${ROOT}/deploy/manifests/operator/clusterrole.yaml"
 kubectl apply -f "${ROOT}/deploy/manifests/operator/clusterrolebinding.yaml"
+
+log "cleaning previous training job (repeatable e2e)"
+kubectl delete job training-job -n ai-training --ignore-not-found --wait=true 2>/dev/null || \
+  kubectl delete job training-job -n ai-training --ignore-not-found
+sleep 2
+
 kubectl apply -f "${ROOT}/deploy/manifests/training/job.yaml"
 
 log "waiting for training pod"

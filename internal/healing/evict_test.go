@@ -49,6 +49,8 @@ func TestEvictPods_uses_eviction_api(t *testing.T) {
 	pod := trainingPod("train-1", "ai-training", "node-1")
 	client := fake.NewSimpleClientset(pod)
 	evictions := 0
+	deletes := 0
+	gets := 0
 	client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		if action.GetSubresource() != "eviction" {
 			return false, nil, nil
@@ -58,7 +60,18 @@ func TestEvictPods_uses_eviction_api(t *testing.T) {
 		if ev.Name != "train-1" {
 			t.Fatalf("eviction name = %s", ev.Name)
 		}
-		return true, nil, apierrors.NewTooManyRequests("rate", 1)
+		return true, ev, nil
+	})
+	client.PrependReactor("delete", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
+		deletes++
+		return false, nil, nil
+	})
+	client.PrependReactor("get", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
+		gets++
+		if gets >= 2 {
+			return true, nil, apierrors.NewNotFound(corev1.Resource("pods"), "train-1")
+		}
+		return false, nil, nil
 	})
 
 	n, err := EvictPods(context.Background(), client, []*corev1.Pod{pod})
@@ -67,6 +80,9 @@ func TestEvictPods_uses_eviction_api(t *testing.T) {
 	}
 	if n != 1 || evictions != 1 {
 		t.Fatalf("evicted=%d evictions=%d", n, evictions)
+	}
+	if deletes != 0 {
+		t.Fatalf("fallback delete should not run on successful eviction, deletes=%d", deletes)
 	}
 }
 
