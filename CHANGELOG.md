@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+（无）
+
+## [0.1.0-demo] - 2026-05-25
+
+MVP 演示版：L1-A Plan B + L1-B kind e2e + P3 硬化 + P4 演示文档；CI `e2e-kind` required。
+
 ### Added
 
 - **P4：** `scripts/demo.sh`（L1-A / `--kind` / `--dry-run`）、`docs/interview-pitch.md`、`docs/demo-runbook.md`
@@ -25,4 +31,4 @@
 
 ## 版本说明
 
-尚未打 tag；合并 `main` 后可发布 `v0.1.0-demo`（可选）。
+- **v0.1.0-demo：** 与 `main` 上 P0–P4 合并内容一致；打 tag 可选：`git tag -a v0.1.0-demo -m "MVP demo release"`。
