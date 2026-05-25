@@ -86,10 +86,28 @@ log "training pod ${OLD_POD} on node ${FAULT_NODE}"
 log "configuring in-cluster operator mock fault on ${FAULT_NODE}"
 kubectl patch configmap operator-config -n ai-platform --type merge \
   -p "{\"data\":{\"PROMETHEUS_MOCK\":\"true\",\"PROMETHEUS_MOCK_NODES\":\"${FAULT_NODE}\",\"HEALING_DRY_RUN\":\"false\",\"POLL_INTERVAL\":\"8s\",\"RESCHEDULE_TIMEOUT\":\"120s\"}}"
-kubectl set image deployment/ai-operator -n ai-platform operator="$OPERATOR_IMAGE" --record=false 2>/dev/null || true
+# Single rollout after ConfigMap patch (do not also set-image — that caused double rollout in CI).
 kubectl rollout restart deployment/ai-operator -n ai-platform
-kubectl rollout status deployment/ai-operator -n ai-platform --timeout=120s
-kubectl wait --for=condition=Ready --timeout=120s -n ai-platform pod -l app.kubernetes.io/name=ai-operator
+kubectl rollout status deployment/ai-operator -n ai-platform --timeout=180s
+wait_operator_pod_ready() {
+  local i
+  for i in $(seq 1 90); do
+    local ready terminating
+    ready="$(kubectl get pods -n ai-platform -l app.kubernetes.io/name=ai-operator \
+      -o jsonpath='{range .items[*]}{.metadata.deletionTimestamp}{"\t"}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}' \
+      | awk -F'\t' '$1=="" && $2=="True"' | wc -l | tr -d ' ')"
+    terminating="$(kubectl get pods -n ai-platform -l app.kubernetes.io/name=ai-operator \
+      -o jsonpath='{range .items[*]}{.metadata.deletionTimestamp}{"\n"}{end}' | awk 'NF' | wc -l | tr -d ' ')"
+    if [[ "${ready:-0}" -ge 1 && "${terminating:-0}" -eq 0 ]]; then
+      return 0
+    fi
+    sleep 2
+  done
+  echo "FAIL: operator pod not ready (ready=${ready:-0} terminating=${terminating:-0})" >&2
+  kubectl get pods -n ai-platform -l app.kubernetes.io/name=ai-operator -o wide || true
+  return 1
+}
+wait_operator_pod_ready
 
 if ! kubectl logs -n ai-platform deployment/ai-operator --tail=30 2>/dev/null | grep -q action_id; then
   echo "WARN: operator logs missing action_id in last 30 lines (checking after heal)"
