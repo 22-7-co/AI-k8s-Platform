@@ -8,51 +8,92 @@
 
 ```mermaid
 flowchart LR
-  DCGM[DCGM DaemonSet] --> Exporter[Go Exporter]
+  DCGM[DCGM / mock Exporter] --> Exporter[Go Exporter :9100]
   Exporter --> Prom[Prometheus]
-  Prom --> Alert[Alerts e.g. XID 79]
-  Alert --> Op[K8s Operator]
+  Prom --> Op[Operator PromQL Pull]
   Op --> Cordon[Cordon + Taint]
-  Op --> Evict[Evict Pods]
+  Cordon --> Evict[Evict Pods]
   Evict --> Job[Job / Training Pod]
-  Job --> CKPT[Checkpoint NFS/Ceph]
+  Job --> CKPT[Checkpoint PVC 示例 L2]
 ```
 
 | 层级 | 组件 |
 |------|------|
-| 感知层 | DCGM + Go Exporter → Prometheus |
-| 控制面 | Custom Operator（`client-go` / kubebuilder） |
-| 自愈 | Cordon → Taint → 驱逐 → Job 重建 + 断点续训 |
+| 感知层 | Exporter → Prometheus（ADR：仅 Pull，无 Webhook MVP） |
+| 控制面 | Operator（`client-go`，`healing-state` 状态机） |
+| 自愈 | Cordon → Taint → 驱逐 → Job 重建 |
 
-详细说明见 [说明文档.txt](./说明文档.txt)、[docs/architecture.md](./docs/architecture.md)。
+详细说明见 [项目计划.md](./项目计划.md)、[docs/p2-acceptance.md](./docs/p2-acceptance.md)、[docs/architecture.md](./docs/architecture.md)、[docs/interview-pitch.md](./docs/interview-pitch.md)。
 
 ## 目录结构
 
 ```
 cmd/operator/          # Operator 入口
-cmd/exporter/          # 指标导出
-internal/controller/   # 控制器逻辑
+cmd/exporter/          # 指标导出 + XID 注入
 internal/healing/      # 自愈编排
-internal/prometheus/   # 指标 / 告警查询
+internal/operator/     # 轮询、metrics、JSON 日志
+internal/prometheus/   # PromQL 客户端
 deploy/manifests/      # K8s 清单
-deploy/helm/           # Helm（可选）
+scripts/               # e2e、demo、uncordon
 ```
 
 ## 快速开始
 
+**依赖：** Go 1.22+、`kubectl`；L1-B 另需 Docker + [kind](https://kind.sigs.k8s.io/)。
+
 ```bash
-# 依赖： Go 1.22+, kubectl, 可选 kind/minikube
+git checkout dev
 make build
 make test
 ```
 
+### 演示（P4，推荐）
+
+```bash
+# L1-A：当前 kubectl context（如 k3s 单节点 Plan B）
+./scripts/demo.sh
+
+# L1-B：kind 双节点严格换节点（约 2–3 分钟）
+./scripts/demo.sh --kind
+
+# 只打 JSON 日志，不改集群
+./scripts/demo.sh --dry-run
+
+./scripts/demo.sh --help
+```
+
+步骤说明：[docs/demo-runbook.md](./docs/demo-runbook.md)
+
+### E2E 回归
+
+```bash
+# L1-A（k3s / default context）
+kubectl config use-context default   # 按你的环境调整
+./scripts/e2e-k3s.sh
+
+# L1-B（需 Docker）
+./scripts/e2e-kind.sh
+
+# 真 PromQL 子路径（kind 保留集群时）
+KEEP_CLUSTER=true RUN_PROMQL_E2E=true ./scripts/e2e-kind.sh
+```
+
+演示后回滚节点：`./scripts/uncordon.sh <node-name>`
+
+### 本地 Operator（开发）
+
+```bash
+export PROMETHEUS_MOCK=true PROMETHEUS_MOCK_NODES=<node>
+export HEALING_DRY_RUN=true METRICS_LISTEN=:18081
+go run ./cmd/operator
+curl -s localhost:18081/metrics | grep operator_up
+```
+
+## 变更记录
+
+见 [CHANGELOG.md](./CHANGELOG.md)。
+
 本地开发与 Cursor Agent 说明见 [AGENTS.md](./AGENTS.md)。
-
-## 开发路线
-
-1. 用 Go + `client-go` 实现 Node cordon / 标签 / 污点。
-2. 从 Prometheus 读取（或模拟）GPU 故障指标。
-3. 故障触发：驱逐 Pod，由 Job 在健康节点拉起；Pod 挂载共享存储上的 Checkpoint。
 
 ## License
 

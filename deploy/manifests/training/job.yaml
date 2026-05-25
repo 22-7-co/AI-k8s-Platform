@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: training-job
+  namespace: ai-training
+  labels:
+    app.kubernetes.io/name: training-job
+spec:
+  backoffLimit: 10
+  template:
+    metadata:
+      labels:
+        ai-k8s-platform.io/training: "true"
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: trainer
+          image: busybox:1.36
+          command: ["sh", "-c", "echo running on $(hostname); sleep 3600"]
