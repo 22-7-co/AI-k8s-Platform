@@ -29,9 +29,25 @@ fi
 
 kubectl config use-context "kind-${CLUSTER}"
 
+TRAINING_IMAGE="${TRAINING_IMAGE:-busybox:1.36}"
+
+load_image_to_kind() {
+  local img="$1"
+  log "preload image ${img} into kind nodes"
+  docker pull "$img" >/dev/null 2>&1 || true
+  if kind load docker-image "$img" --name "$CLUSTER" 2>/dev/null; then
+    return 0
+  fi
+  while read -r n; do
+    [[ -n "$n" ]] || continue
+    docker save "$img" | docker exec -i "$n" ctr --namespace=k8s.io images import - >/dev/null 2>&1 || true
+  done < <(kind get nodes --name "$CLUSTER")
+}
+
 log "building operator image"
 docker build -f "${ROOT}/deploy/docker/Dockerfile.operator" -t "$OPERATOR_IMAGE" "$ROOT"
-kind load docker-image "$OPERATOR_IMAGE" --name "$CLUSTER"
+load_image_to_kind "$OPERATOR_IMAGE"
+load_image_to_kind "$TRAINING_IMAGE"
 
 log "applying manifests"
 kubectl apply -f "${ROOT}/deploy/manifests/operator/namespace.yaml"

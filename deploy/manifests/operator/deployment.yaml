@@ -24,8 +24,7 @@ spec:
             - configMapRef:
                 name: operator-config
           env:
-            - name: PROMETHEUS_MOCK_NODES
-              value: ""  # e2e patches this to the fault node name
+            # PROMETHEUS_MOCK_NODES comes from operator-config (e2e patches ConfigMap)
             - name: METRICS_LISTEN
               value: ":8080"
           ports:

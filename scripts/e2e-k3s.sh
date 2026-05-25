@@ -58,8 +58,9 @@ export RESCHEDULE_TIMEOUT=90s
 export TARGET_NAMESPACES=ai-training
 export TRAINING_JOB_NAME=training-job
 export TRAINING_JOB_NAMESPACE=ai-training
+export METRICS_LISTEN="${METRICS_LISTEN:-:8080}"
 
-log "starting operator locally"
+log "starting operator locally (metrics ${METRICS_LISTEN})"
 go run ./cmd/operator &
 OP_PID=$!
 trap 'kill ${OP_PID} 2>/dev/null || true' EXIT

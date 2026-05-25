@@ -12,6 +12,7 @@ data:
   TARGET_NAMESPACES: "ai-training"
   TRAINING_POD_LABEL_SELECTOR: "ai-k8s-platform.io/training=true"
   PROMETHEUS_MOCK: "true"
+  PROMETHEUS_MOCK_NODES: ""
   PROMETHEUS_QUERY: "increase(gpu_xid_errors_total[5m]) > 0"
   TRAINING_JOB_NAME: "training-job"
   TRAINING_JOB_NAMESPACE: "ai-training"
