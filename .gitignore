@@ -46,3 +46,7 @@ deploy/**/charts/*.tgz
 # Logs & temp
 *.log
 tmp/
+
+# Generated observability config (envsubst)
+scripts/prometheus/prometheus.runtime.yml
+docs/examples/grafana/provisioning/datasources/prometheus.runtime.yml

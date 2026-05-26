@@ -62,6 +62,21 @@ KEEP_CLUSTER=true RUN_PROMQL_E2E=true ./scripts/e2e-kind.sh
 
 适合讲解状态机而不动生产/共享集群。
 
+## 模式四：Grafana 联调（P5-Obs）
+
+**依赖：** Docker；宿主机已 `make build`。
+
+| 终端 | 命令 |
+|------|------|
+| T1 | `./bin/exporter &` |
+| T1 | `METRICS_LISTEN=:18081 go run ./cmd/operator &`（按需设 `PROMETHEUS_MOCK_*`） |
+| T2 | `./scripts/observability-stack.sh up` |
+| T3 | `./scripts/demo.sh` 或 `curl -X POST 'localhost:9100/inject/xid?node=<node>'` |
+
+打开 <http://localhost:3000> → Dashboard **AI Platform Healing**（`operator_up`、healing 曲线、XID 面板）。
+
+与 `demo.sh` 并行即可，**不必**改 demo 脚本逻辑；结束执行 `./scripts/observability-stack.sh down`。
+
 ## 演示后回滚
 
 ```bash

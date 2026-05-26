@@ -1,0 +1,10 @@
+apiVersion: 1
+providers:
+  - name: ai-k8s-healing
+    orgId: 1
+    folder: AI Platform
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

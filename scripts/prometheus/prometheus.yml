@@ -1,6 +1,5 @@
-# Scrape the mock GPU exporter on the host.
-# Linux + Docker: use host.docker.internal (see start-prometheus.sh --add-host).
-# Prometheus in host network mode: change target to localhost:9100.
+# Template for local Docker Prometheus (rendered by start-prometheus.sh via envsubst).
+# Defaults: Exporter :9100, Operator :18081 on host (see demo.sh METRICS_LISTEN).
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
@@ -8,4 +7,11 @@ global:
 scrape_configs:
   - job_name: gpu-metrics-exporter
     static_configs:
-      - targets: ["host.docker.internal:9100"]
+      - targets: ["${EXPORTER_METRICS_HOST}"]
+    metrics_path: /metrics
+
+  - job_name: ai-operator
+    static_configs:
+      - targets: ["${OPERATOR_METRICS_HOST}"]
+    metrics_path: /metrics
+    scrape_interval: 15s

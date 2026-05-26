@@ -89,6 +89,23 @@ go run ./cmd/operator
 curl -s localhost:18081/metrics | grep operator_up
 ```
 
+### Observability（P5-Obs，Grafana 演示）
+
+```bash
+./bin/exporter &
+export METRICS_LISTEN=:18081
+go run ./cmd/operator &   # 另开终端；mock/故障见 docs/observability.md
+
+./scripts/observability-stack.sh up
+# Prometheus http://localhost:9090/targets
+# Grafana     http://localhost:3000  (admin/admin，仅本地)
+
+./scripts/demo.sh          # 触发 healing 后看 Dashboard 曲线
+./scripts/observability-stack.sh down
+```
+
+详见 [docs/observability.md](./docs/observability.md)、[docs/examples/grafana/README.md](./docs/examples/grafana/README.md)。
+
 ## 变更记录
 
 见 [CHANGELOG.md](./CHANGELOG.md)。

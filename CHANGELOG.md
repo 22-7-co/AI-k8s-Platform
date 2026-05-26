@@ -4,7 +4,12 @@
 
 ## [Unreleased]
 
-（无）
+### Added (P5-Obs)
+
+- Grafana provisioning + **AI Platform Healing** dashboard（`docs/examples/grafana/`）
+- `scripts/grafana/start-grafana.sh`、`scripts/observability-stack.sh`
+- Prometheus scrape **ai-operator**（`OPERATOR_METRICS_HOST`，默认 `host.docker.internal:18081`）
+- `docs/observability.md`；README / runbook / interview-pitch 可观测小节
 
 ## [0.1.0-demo] - 2026-05-25
 
