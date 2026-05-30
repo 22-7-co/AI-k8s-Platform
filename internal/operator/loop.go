@@ -149,6 +149,7 @@ func (l *Loop) afterEvicted(ctx context.Context, nodeName, actionID string) erro
 			PromQL: l.Config.PrometheusQuery,
 		})
 		metrics.RecordStep("verify", "err", nodeName, l.Config.HealingDryRun)
+		metrics.RecordRecovery(nodeName, "err", l.Config.HealingDryRun)
 		return err
 	}
 	if !l.Config.HealingDryRun {
@@ -160,6 +161,7 @@ func (l *Loop) afterEvicted(ctx context.Context, nodeName, actionID string) erro
 		}
 		metrics.MarkSuccess()
 		metrics.RecordStep("verify", "ok", nodeName, false)
+		metrics.RecordRecovery(nodeName, "ok", false)
 	}
 	logging.Info("healing completed", logging.Fields{
 		ActionID: actionID, Node: nodeName, Action: "verify", Result: "ok", PromQL: l.Config.PrometheusQuery,

@@ -4,6 +4,16 @@
 
 ## [Unreleased]
 
+### Added (Interview prep / L3)
+
+- `docs/interview-faq.md`、`docs/known-limitations.md`、`docs/interview-deep-dive.md`、`docs/cloud-lab.md`
+- L3 云 lab：`scripts/cloud/deploy-stack.sh`、`scripts/e2e-cloud.sh`、`scripts/demo-cloud.sh`
+- Exporter DaemonSet、`deploy/manifests/observability/prometheus.yaml`、`configmap-cloud.yaml`
+- L2：`deploy/manifests/training/pvc.yaml`、`job-with-checkpoint.yaml`、`scripts/demo-l2.sh`
+- `scripts/demo-record.sh`、`scripts/lib/timing.sh`（e2e 量化 TTR）
+- Operator metric `healing_recovery_total`；Grafana 面板补强（失败次数、verify 速率、XID `$node`）
+- PrometheusRule 示例：`OperatorDown`、`HealingStale`
+
 ### Added (P5-Obs)
 
 - Grafana provisioning + **AI Platform Healing** dashboard（`docs/examples/grafana/`）

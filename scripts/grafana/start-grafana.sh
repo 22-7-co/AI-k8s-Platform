@@ -61,7 +61,7 @@ cmd_up() {
   fi
   $rt "${run_args[@]}" "$IMAGE"
   echo "Grafana UI: http://localhost:${PORT}  (admin / admin, local demo only)"
-  echo "Dashboard:  AI Platform Healing"
+  echo "Dashboard:  AI 平台自愈监控"
   echo "Prometheus: ${PROMETHEUS_URL}"
 }
 

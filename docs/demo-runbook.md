@@ -62,9 +62,17 @@ KEEP_CLUSTER=true RUN_PROMQL_E2E=true ./scripts/e2e-kind.sh
 
 适合讲解状态机而不动生产/共享集群。
 
-## 模式四：Grafana 联调（P5-Obs）
+## 模式四：Grafana 联调 / 录屏（P5-Obs）
 
-**依赖：** Docker；宿主机已 `make build`。
+**依赖：** Docker；`make build`。
+
+```bash
+./scripts/demo-record.sh          # kind + observability 提示（推荐录屏）
+./scripts/demo-record.sh k3s
+./scripts/demo-record.sh cloud    # 云 VM checklist
+```
+
+手动三终端：
 
 | 终端 | 命令 |
 |------|------|
@@ -73,9 +81,28 @@ KEEP_CLUSTER=true RUN_PROMQL_E2E=true ./scripts/e2e-kind.sh
 | T2 | `./scripts/observability-stack.sh up` |
 | T3 | `./scripts/demo.sh` 或 `curl -X POST 'localhost:9100/inject/xid?node=<node>'` |
 
-打开 <http://localhost:3000> → Dashboard **AI Platform Healing**（`operator_up`、healing 曲线、XID 面板）。
+打开 <http://localhost:3000> → Dashboard **AI 平台自愈监控**（`operator_up`、healing 曲线、XID 面板）。
 
 与 `demo.sh` 并行即可，**不必**改 demo 脚本逻辑；结束执行 `./scripts/observability-stack.sh down`。
+
+**录屏建议：** Grafana 选 Last 15m、refresh 10s；在 XID inject / demo 触发前后录制，使动作速率曲线与 XID 尖峰同屏。
+
+## 模式五：L3 云 VM（面试主打）
+
+见 [cloud-lab.md](./cloud-lab.md)。录屏阶段短租 3×2C4G k3s：
+
+```bash
+export KUBECONFIG=~/.kube/config-cloud
+./scripts/demo-cloud.sh
+```
+
+## 模式六：L2 Checkpoint PVC（可选加分）
+
+```bash
+./scripts/demo-l2.sh
+```
+
+口播：续训在训练容器 + PVC 契约，非 Operator 逻辑。
 
 ## 演示后回滚
 
@@ -88,13 +115,15 @@ kubectl get node <fault-node> -o yaml | grep -E 'unschedulable|healing-state|gpu
 
 ## L2 可选说明（口播即可）
 
-示例 Job 可挂载 PVC，容器启动脚本读取约定 checkpoint 路径（演示可用 `touch`）。**续训逻辑在训练框架**，Operator 只保证 Pod 重建与存储挂载契约——非平台 MVP 能力。
+运行 `./scripts/demo-l2.sh` 或 apply `deploy/manifests/training/job-with-checkpoint.yaml`。示例 Job 挂载 PVC，容器读取 `/checkpoints/epoch.ckpt`。**续训逻辑在训练框架**，Operator 只保证 Pod 重建与存储挂载契约。
 
 ## 故障排查
 
 | 现象 | 检查 |
 |------|------|
 | `kubectl cannot reach a cluster` | `kubectl cluster-info`、context |
+| `:18081 bind: address already in use` | 停占用端口的旧 Operator：`fuser -k 18081/tcp` 或 `pkill -f bin/operator`；`e2e-k3s.sh` 现已自动释放端口 |
+| Grafana 自愈面板 No data /「56 年」 | 多为上述端口冲突：Prometheus 抓到旧进程，`healing_last_success_timestamp` 仍为 0；重跑 `demo.sh` 并刷新 Last 15m |
 | `:8080 bind: address already in use` | 用 `demo.sh`（默认 `:18081`）或停旧 Operator |
 | kind 镜像拉取失败 | `docker info`、代理 / `kind load` |
 | 新 Pod 仍在 fault 节点 | 需 L1-B 双节点；单节点走 Plan B |
@@ -106,4 +135,8 @@ kubectl get node <fault-node> -o yaml | grep -E 'unschedulable|healing-state|gpu
 | `scripts/e2e-k3s.sh` | L1-A Gate |
 | `scripts/e2e-kind.sh` | L1-B Gate |
 | `scripts/e2e-promql.sh` | 真 PromQL 子 Gate |
+| `scripts/e2e-cloud.sh` | L3 云集群 Gate |
+| `scripts/demo-cloud.sh` | L3 面试 demo |
+| `scripts/demo-record.sh` | 录屏编排 |
+| `scripts/demo-l2.sh` | L2 PVC 示例 |
 | `scripts/uncordon.sh` | 人工回滚 |

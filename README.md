@@ -23,7 +23,20 @@ flowchart LR
 | 控制面 | Operator（`client-go`，`healing-state` 状态机） |
 | 自愈 | Cordon → Taint → 驱逐 → Job 重建 |
 
-详细说明见 [项目计划.md](./项目计划.md)、[docs/p2-acceptance.md](./docs/p2-acceptance.md)、[docs/architecture.md](./docs/architecture.md)、[docs/interview-pitch.md](./docs/interview-pitch.md)。
+详细说明见 [项目计划.md](./项目计划.md)、[docs/p2-acceptance.md](./docs/p2-acceptance.md)、[docs/interview-pitch.md](./docs/interview-pitch.md)、[docs/interview-faq.md](./docs/interview-faq.md)。
+
+## 面试快速入口
+
+| 文档 / 命令 | 用途 |
+|-------------|------|
+| [docs/interview-pitch.md](./docs/interview-pitch.md) | 30s / 3min / 5min 口播 |
+| [docs/interview-faq.md](./docs/interview-faq.md) | 15 个高频追问 |
+| [docs/known-limitations.md](./docs/known-limitations.md) | MVP 边界（主动说明） |
+| [docs/cloud-lab.md](./docs/cloud-lab.md) | **L3 云 VM 录屏**（3×2C4G k3s） |
+| `./scripts/demo.sh --kind` | 本地 CI 级 demo（L1-B） |
+| `./scripts/demo-cloud.sh` | 云上主打 demo（需 k3s 集群） |
+| `./scripts/demo-record.sh` | Grafana + 终端录屏流程 |
+
 
 ## 目录结构
 
@@ -92,16 +105,23 @@ curl -s localhost:18081/metrics | grep operator_up
 ### Observability（P5-Obs，Grafana 演示）
 
 ```bash
-./bin/exporter &
-export METRICS_LISTEN=:18081
-go run ./cmd/operator &   # 另开终端；mock/故障见 docs/observability.md
+./scripts/demo-record.sh              # 推荐：录屏编排
+./scripts/observability-stack.sh up   # 或手动栈
+```
 
-./scripts/observability-stack.sh up
-# Prometheus http://localhost:9090/targets
-# Grafana     http://localhost:3000  (admin/admin，仅本地)
+### L2 Checkpoint（可选）
 
-./scripts/demo.sh          # 触发 healing 后看 Dashboard 曲线
-./scripts/observability-stack.sh down
+```bash
+./scripts/demo-l2.sh
+```
+
+### L3 云 VM（面试主打录屏）
+
+见 [docs/cloud-lab.md](./docs/cloud-lab.md)：
+
+```bash
+export KUBECONFIG=~/.kube/config-cloud
+./scripts/demo-cloud.sh
 ```
 
 详见 [docs/observability.md](./docs/observability.md)、[docs/examples/grafana/README.md](./docs/examples/grafana/README.md)。

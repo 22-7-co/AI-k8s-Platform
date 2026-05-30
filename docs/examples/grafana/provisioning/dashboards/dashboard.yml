@@ -2,7 +2,7 @@ apiVersion: 1
 providers:
   - name: ai-k8s-healing
     orgId: 1
-    folder: AI Platform
+    folder: AI 平台
     type: file
     disableDeletion: false
     editable: true

@@ -1,0 +1,20 @@
+# Cloud / L3 operator settings (merge over base configmap in deploy-stack.sh).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: operator-config
+  namespace: ai-platform
+  labels:
+    app.kubernetes.io/name: ai-operator
+data:
+  POLL_INTERVAL: "15s"
+  HEALING_COOLDOWN: "10m"
+  HEALING_DRY_RUN: "false"
+  TARGET_NAMESPACES: "ai-training"
+  TRAINING_POD_LABEL_SELECTOR: "ai-k8s-platform.io/training=true"
+  PROMETHEUS_MOCK: "false"
+  PROMETHEUS_URL: "http://prometheus.ai-platform.svc:9090"
+  PROMETHEUS_QUERY: "increase(gpu_xid_errors_total[5m]) > 0"
+  TRAINING_JOB_NAME: "training-job"
+  TRAINING_JOB_NAMESPACE: "ai-training"
+  RESCHEDULE_TIMEOUT: "120s"

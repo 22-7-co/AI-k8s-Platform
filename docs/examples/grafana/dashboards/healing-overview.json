@@ -42,7 +42,7 @@
           "refId": "A"
         }
       ],
-      "title": "Operator Up",
+      "title": "Operator 运行状态",
       "type": "stat"
     },
     {
@@ -89,7 +89,7 @@
           "refId": "A"
         }
       ],
-      "title": "Healing Actions (5m rate)",
+      "title": "自愈动作速率（5 分钟）",
       "type": "timeseries"
     },
     {
@@ -99,11 +99,11 @@
           "color": { "mode": "thresholds" },
           "mappings": [
             {
-              "options": { "match": "null", "result": { "index": 0, "text": "N/A" } },
+              "options": { "match": "null", "result": { "index": 0, "text": "暂无" } },
               "type": "special"
             }
           ],
-          "noValue": "N/A",
+          "noValue": "暂无",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -133,7 +133,7 @@
           "refId": "A"
         }
       ],
-      "title": "Seconds Since Last Success",
+      "title": "距上次自愈成功（秒）",
       "type": "stat"
     },
     {
@@ -175,12 +175,12 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (node) (increase(gpu_xid_errors_total[5m]))",
+          "expr": "sum by (node) (increase(gpu_xid_errors_total{node=~\"$node\"}[5m]))",
           "legendFormat": "{{node}}",
           "refId": "A"
         }
       ],
-      "title": "GPU XID Errors (5m)",
+      "title": "GPU XID 错误（5 分钟）",
       "type": "timeseries"
     },
     {
@@ -227,7 +227,75 @@
           "refId": "A"
         }
       ],
-      "title": "Healing Duration p99 (5m)",
+      "title": "自愈耗时 P99（5 分钟）",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 18 },
+      "id": 6,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(healing_actions_total{result!=\"ok\",node=~\"$node\"}[15m])) or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "title": "自愈失败次数（15 分钟）",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "lineWidth": 1,
+            "showPoints": "never"
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 18, "x": 6, "y": 18 },
+      "id": 7,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (node) (rate(healing_recovery_total{result=\"ok\",node=~\"$node\"}[5m]))",
+          "legendFormat": "verify ok {{node}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (node) (rate(healing_recovery_total{result=\"err\",node=~\"$node\"}[5m]))",
+          "legendFormat": "verify err {{node}}",
+          "refId": "B"
+        }
+      ],
+      "title": "恢复确认速率（verify / recovery）",
       "type": "timeseries"
     }
   ],
@@ -238,11 +306,11 @@
     "list": [
       {
         "allValue": ".*",
-        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "current": { "selected": true, "text": "全部", "value": "$__all" },
         "datasource": { "type": "prometheus", "uid": "prometheus" },
         "definition": "label_values(healing_actions_total, node)",
         "includeAll": true,
-        "label": "node",
+        "label": "节点",
         "multi": true,
         "name": "node",
         "query": { "query": "label_values(healing_actions_total, node)", "refId": "PrometheusVariableQuery" },
@@ -255,7 +323,7 @@
   "time": { "from": "now-15m", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "AI Platform Healing",
+  "title": "AI 平台自愈监控",
   "uid": "ai-k8s-healing",
-  "version": 1
+  "version": 3
 }

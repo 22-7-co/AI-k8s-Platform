@@ -16,7 +16,7 @@ flowchart LR
 | gpu-metrics-exporter | 9100 | `gpu_xid_errors_total`，`POST /inject/xid` |
 | ai-operator | **18081** | `operator_up`、`healing_actions_total`…（与 `demo.sh` 默认 `METRICS_LISTEN` 一致） |
 | Prometheus | 9090 | scrape Exporter + Operator（Docker → `host.docker.internal`） |
-| Grafana | 3000 | 预置 Dashboard **AI Platform Healing** |
+| Grafana | 3000 | 预置 Dashboard **AI 平台自愈监控** |
 
 ## 本地启动顺序
 

@@ -16,3 +16,19 @@ spec:
           annotations:
             summary: "GPU XID on {{ $labels.node }}"
             description: "GPU {{ $labels.gpu_id }} reported XID {{ $labels.xid_code }} on node {{ $labels.node }}"
+        - alert: OperatorDown
+          expr: operator_up == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "AI healing operator is down"
+            description: "operator_up has been 0 for 2m; control plane may miss fault handling."
+        - alert: HealingStale
+          expr: time() - healing_last_success_timestamp > 600
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "No successful healing in 10 minutes"
+            description: "Check operator logs and Prometheus fault query."

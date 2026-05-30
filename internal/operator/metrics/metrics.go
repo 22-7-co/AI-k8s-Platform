@@ -26,10 +26,14 @@ var (
 		Name: "healing_last_success_timestamp",
 		Help: "Unix timestamp of the last successful healing completion.",
 	})
+	healingRecovery = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "healing_recovery_total",
+		Help: "Job reschedule verification outcomes after eviction.",
+	}, []string{"node", "result"})
 )
 
 func init() {
-	prometheus.MustRegister(operatorUp, healingActions, healingDuration, healingLastSuccess)
+	prometheus.MustRegister(operatorUp, healingActions, healingDuration, healingLastSuccess, healingRecovery)
 	operatorUp.Set(1)
 }
 
@@ -59,4 +63,12 @@ func ObserveHandleNode(node, result string, dryRun bool, d time.Duration) {
 // MarkSuccess sets last success timestamp.
 func MarkSuccess() {
 	healingLastSuccess.Set(float64(time.Now().Unix()))
+}
+
+// RecordRecovery increments verify/reschedule outcome counters.
+func RecordRecovery(node, result string, dryRun bool) {
+	if dryRun {
+		return
+	}
+	healingRecovery.WithLabelValues(node, result).Inc()
 }

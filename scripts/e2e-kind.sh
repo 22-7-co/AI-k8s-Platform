@@ -4,6 +4,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+# shellcheck source=lib/timing.sh
+source "${ROOT}/scripts/lib/timing.sh"
 
 CLUSTER="${KIND_CLUSTER_NAME:-ai-k8s-e2e}"
 OPERATOR_IMAGE="${OPERATOR_IMAGE:-ai-k8s-platform/operator:dev}"
@@ -84,6 +86,7 @@ OLD_POD="$(kubectl get pods -n ai-training -l batch.kubernetes.io/job-name=train
 log "training pod ${OLD_POD} on node ${FAULT_NODE}"
 
 log "configuring in-cluster operator mock fault on ${FAULT_NODE}"
+timing_start
 kubectl patch configmap operator-config -n ai-platform --type merge \
   -p "{\"data\":{\"PROMETHEUS_MOCK\":\"true\",\"PROMETHEUS_MOCK_NODES\":\"${FAULT_NODE}\",\"HEALING_DRY_RUN\":\"false\",\"POLL_INTERVAL\":\"8s\",\"RESCHEDULE_TIMEOUT\":\"120s\"}}"
 # Single rollout after ConfigMap patch (do not also set-image — that caused double rollout in CI).
@@ -125,6 +128,7 @@ if ! kubectl get node "$FAULT_NODE" -o jsonpath='{.spec.unschedulable}' | grep -
   kubectl logs -n ai-platform deployment/ai-operator --tail=80 || true
   exit 1
 fi
+timing_mark cordon
 
 log "waiting for old pod termination"
 for _ in $(seq 1 90); do
@@ -138,6 +142,7 @@ if kubectl get pod "$OLD_POD" -n ai-training >/dev/null 2>&1; then
   echo "FAIL: old pod still exists" >&2
   exit 1
 fi
+timing_mark evicted
 
 log "waiting for new pod on another node"
 NEW_NODE=""
@@ -177,6 +182,8 @@ else
   log "healing events present"
 fi
 
+timing_mark recovered
+timing_print_summary "$FAULT_NODE" "$NEW_NODE" "$NEW_POD"
 log "P3 e2e-kind PASSED (fault=${FAULT_NODE}, new=${NEW_NODE})"
 
 if [[ "$RUN_PROMQL_E2E" == "true" ]]; then

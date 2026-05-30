@@ -5,8 +5,32 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+# shellcheck source=lib/timing.sh
+source "${ROOT}/scripts/lib/timing.sh"
 
 log() { echo "==> $*"; }
+
+# Release METRICS_LISTEN so Prometheus scrapes the operator started by this script.
+free_metrics_port() {
+  local addr="${METRICS_LISTEN:-:8080}"
+  local port="${addr##*:}"
+  if command -v fuser >/dev/null 2>&1; then
+    fuser -k "${port}/tcp" 2>/dev/null || true
+  elif command -v ss >/dev/null 2>&1; then
+    local pid
+    pid="$(ss -lntp "sport = :${port}" 2>/dev/null | sed -n 's/.*pid=\([0-9]*\).*/\1/p' | head -1)"
+    [[ -n "${pid}" ]] && kill "${pid}" 2>/dev/null || true
+  fi
+  sleep 1
+}
+
+stop_operator() {
+  if [[ -n "${OP_PID:-}" ]]; then
+    kill "${OP_PID}" 2>/dev/null || true
+    pkill -P "${OP_PID}" 2>/dev/null || true
+  fi
+  free_metrics_port
+}
 
 if ! kubectl cluster-info >/dev/null 2>&1; then
   echo "ERROR: kubectl cannot reach a cluster" >&2
@@ -60,10 +84,16 @@ export TRAINING_JOB_NAME=training-job
 export TRAINING_JOB_NAMESPACE=ai-training
 export METRICS_LISTEN="${METRICS_LISTEN:-:8080}"
 
+timing_start
+free_metrics_port
 log "starting operator locally (metrics ${METRICS_LISTEN})"
-go run ./cmd/operator &
+if [[ -x "${ROOT}/bin/operator" ]]; then
+  "${ROOT}/bin/operator" &
+else
+  go run ./cmd/operator &
+fi
 OP_PID=$!
-trap 'kill ${OP_PID} 2>/dev/null || true' EXIT
+trap 'stop_operator' EXIT
 
 log "waiting for node cordon"
 for _ in $(seq 1 45); do
@@ -76,6 +106,7 @@ kubectl get node "$FAULT_NODE" -o jsonpath='{.spec.unschedulable}' | grep -q tru
   echo "FAIL: node not cordoned" >&2
   exit 1
 }
+timing_mark cordon
 
 log "waiting for old pod termination"
 for _ in $(seq 1 45); do
@@ -86,6 +117,7 @@ kubectl get pod "$OLD_POD" -n ai-training >/dev/null 2>&1 && {
   echo "FAIL: old pod still exists" >&2
   exit 1
 }
+timing_mark evicted
 
 if [[ "$SINGLE_NODE" == "true" ]]; then
   log "uncordoning and removing GPU taint on ${FAULT_NODE} (single-node reschedule)"
@@ -123,7 +155,9 @@ else
   log "WARN: no Healing events visible"
 fi
 
-kill "${OP_PID}" 2>/dev/null || true
+stop_operator
 trap - EXIT
 
+timing_mark recovered
+timing_print_summary "$FAULT_NODE" "$NEW_NODE" "$NEW_POD"
 log "P2 e2e-k3s PASSED (fault=${FAULT_NODE}, new=${NEW_POD}@${NEW_NODE}, single_node=${SINGLE_NODE})"
